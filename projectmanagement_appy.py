@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-mport streamlit as st
+import streamlit as st
 
 # Set gradient background using custom CSS
 st.markdown(
