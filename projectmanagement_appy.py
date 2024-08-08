@@ -8,9 +8,20 @@ try:
 except ModuleNotFoundError:
     print("pymongo is not installed")
 
-git add requirements.txt
-git commit -m "Added pymongo to requirements"
-git push origin main  # or the branch you are using
+import subprocess
+
+# Function to execute a git command
+def run_git_command(command):
+    try:
+        result = subprocess.run(command, check=True, shell=True, text=True, capture_output=True)
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing command: {e.stderr}")
+
+# Example usage
+run_git_command("git add requirements.txt")
+run_git_command("git commit -m 'Updated requirements.txt'")
+
 
 # MongoDB connection
 client = MongoClient("mongodb+srv://<username>:<password>@cluster0.mongodb.net/test?retryWrites=true&w=majority")
