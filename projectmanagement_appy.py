@@ -8,6 +8,9 @@ try:
 except ModuleNotFoundError:
     print("pymongo is not installed")
 
+git add requirements.txt
+git commit -m "Added pymongo to requirements"
+git push origin main  # or the branch you are using
 
 # MongoDB connection
 client = MongoClient("mongodb+srv://<username>:<password>@cluster0.mongodb.net/test?retryWrites=true&w=majority")
