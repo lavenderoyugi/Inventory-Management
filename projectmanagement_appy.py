@@ -1,32 +1,41 @@
-# app.py
 import streamlit as st
 import pandas as pd
-from pymongo import MongoClient
-try:
-    import pymongo
-    print("pymongo is installed")
-except ModuleNotFoundError:
-    print("pymongo is not installed")
+import sqlite3
 
-import subprocess
+# Connect to SQLite database
+conn = sqlite3.connect('inventory_management.db')
+c = conn.cursor()
 
-# Function to execute a git command
-def run_git_command(command):
-    try:
-        result = subprocess.run(command, check=True, shell=True, text=True, capture_output=True)
-        print(result.stdout)
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing command: {e.stderr}")
+# Create tables if they don't exist
+c.execute('''
+    CREATE TABLE IF NOT EXISTS inventory (
+        item_id TEXT PRIMARY KEY,
+        item_name TEXT,
+        quantity INTEGER,
+        date_of_arrival DATE,
+        supplier_details TEXT
+    )
+''')
 
-# Example usage
-run_git_command("git add requirements.txt")
-run_git_command("git commit -m 'Updated requirements.txt'")
+c.execute('''
+    CREATE TABLE IF NOT EXISTS attendance (
+        worker_id TEXT PRIMARY KEY,
+        worker_name TEXT,
+        date DATE,
+        time_of_arrival TIME,
+        time_of_departure TIME
+    )
+''')
 
-
-# MongoDB connection
-client = MongoClient("mongodb+srv://<username>:<password>@cluster0.mongodb.net/test?retryWrites=true&w=majority")
-db = client['construction']
-inventory_collection = db['inventory']
+c.execute('''
+    CREATE TABLE IF NOT EXISTS payments (
+        worker_id TEXT,
+        worker_name TEXT,
+        payment_date DATE,
+        amount_paid REAL,
+        payment_method TEXT
+    )
+''')
 
 # Streamlit App
 st.title("Inventory Management")
@@ -39,72 +48,63 @@ date_of_arrival = st.date_input("Date of Arrival")
 supplier_details = st.text_input("Supplier Details")
 
 if st.button("Add Item"):
-    inventory_item = {
-        "item_id": item_id,
-        "item_name": item_name,
-        "quantity": quantity,
-        "date_of_arrival": date_of_arrival,
-        "supplier_details": supplier_details
-    }
-    inventory_collection.insert_one(inventory_item)
+    with conn:
+        c.execute('''
+            INSERT OR REPLACE INTO inventory (item_id, item_name, quantity, date_of_arrival, supplier_details)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (item_id, item_name, quantity, date_of_arrival, supplier_details))
     st.success("Item added to inventory")
 
 # Display Inventory
 st.subheader("Inventory List")
-inventory_data = pd.DataFrame(list(inventory_collection.find()))
+inventory_data = pd.read_sql_query("SELECT * FROM inventory", conn)
 st.write(inventory_data)
 
-# app.py (continued)
-
+# Attendance Section
 st.title("Attendance Register")
 
 # Attendance Form
-worker_id = st.text_input("Worker ID")
-worker_name = st.text_input("Worker Name")
-date = st.date_input("Date")
+worker_id = st.text_input("Worker ID", key="attendance_worker_id")
+worker_name = st.text_input("Worker Name", key="attendance_worker_name")
+date = st.date_input("Date", key="attendance_date")
 time_of_arrival = st.time_input("Time of Arrival")
 time_of_departure = st.time_input("Time of Departure")
 
 if st.button("Record Attendance"):
-    attendance_record = {
-        "worker_id": worker_id,
-        "worker_name": worker_name,
-        "date": date,
-        "time_of_arrival": time_of_arrival,
-        "time_of_departure": time_of_departure
-    }
-    db.attendance.insert_one(attendance_record)
+    with conn:
+        c.execute('''
+            INSERT OR REPLACE INTO attendance (worker_id, worker_name, date, time_of_arrival, time_of_departure)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (worker_id, worker_name, date, time_of_arrival, time_of_departure))
     st.success("Attendance recorded")
 
 # Display Attendance
 st.subheader("Attendance Records")
-attendance_data = pd.DataFrame(list(db.attendance.find()))
+attendance_data = pd.read_sql_query("SELECT * FROM attendance", conn)
 st.write(attendance_data)
 
-# app.py (continued)
-
+# Payment Section
 st.title("Payment Tracking")
 
 # Payment Form
 payment_worker_id = st.text_input("Worker ID", key="payment_worker_id")
 payment_worker_name = st.text_input("Worker Name", key="payment_worker_name")
-payment_date = st.date_input("Payment Date")
+payment_date = st.date_input("Payment Date", key="payment_date")
 amount_paid = st.number_input("Amount Paid", min_value=0.0)
 payment_method = st.selectbox("Payment Method", ["Cash", "Bank Transfer", "Mobile Money"])
 
 if st.button("Record Payment"):
-    payment_record = {
-        "worker_id": payment_worker_id,
-        "worker_name": payment_worker_name,
-        "payment_date": payment_date,
-        "amount_paid": amount_paid,
-        "payment_method": payment_method
-    }
-    db.payments.insert_one(payment_record)
+    with conn:
+        c.execute('''
+            INSERT INTO payments (worker_id, worker_name, payment_date, amount_paid, payment_method)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (payment_worker_id, payment_worker_name, payment_date, amount_paid, payment_method))
     st.success("Payment recorded")
 
 # Display Payments
 st.subheader("Payment Records")
-payment_data = pd.DataFrame(list(db.payments.find()))
+payment_data = pd.read_sql_query("SELECT * FROM payments", conn)
 st.write(payment_data)
 
+# Close the connection when the app is stopped
+conn.close()
