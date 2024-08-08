@@ -3,6 +3,12 @@
 import streamlit as st
 import pandas as pd
 from pymongo import MongoClient
+try:
+    import pymongo
+    print("pymongo is installed")
+except ModuleNotFoundError:
+    print("pymongo is not installed")
+
 
 # MongoDB connection
 client = MongoClient("mongodb+srv://<username>:<password>@cluster0.mongodb.net/test?retryWrites=true&w=majority")
