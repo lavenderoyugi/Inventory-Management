@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from io import BytesIO
 
 # Connect to SQLite database
 conn = sqlite3.connect('inventory_management.db')
@@ -15,17 +14,6 @@ c.execute('''
         quantity INTEGER,
         date_of_arrival DATE,
         supplier_details TEXT
-    )
-''')
-
-c.execute('''
-    CREATE TABLE IF NOT EXISTS inventory_transactions (
-        transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        item_id TEXT,
-        transaction_type TEXT,  -- 'in' or 'out'
-        quantity INTEGER,
-        transaction_date DATE,
-        FOREIGN KEY(item_id) REFERENCES inventory(item_id)
     )
 ''')
 
@@ -65,22 +53,11 @@ if st.button("Add Item"):
             INSERT OR REPLACE INTO inventory (item_id, item_name, quantity, date_of_arrival, supplier_details)
             VALUES (?, ?, ?, ?, ?)
         ''', (item_id, item_name, quantity, date_of_arrival, supplier_details))
-        # Add transaction record for item added
-        c.execute('''
-            INSERT INTO inventory_transactions (item_id, transaction_type, quantity, transaction_date)
-            VALUES (?, ?, ?, ?)
-        ''', (item_id, 'in', quantity, date_of_arrival))
     st.success("Item added to inventory")
 
 # Display Inventory
 st.subheader("Inventory List")
-inventory_data = pd.read_sql_query('''
-    SELECT item_id, item_name, SUM(CASE WHEN transaction_type = 'in' THEN quantity ELSE 0 END) -
-           SUM(CASE WHEN transaction_type = 'out' THEN quantity ELSE 0 END) AS balance
-    FROM inventory
-    LEFT JOIN inventory_transactions ON inventory.item_id = inventory_transactions.item_id
-    GROUP BY item_id, item_name
-''', conn)
+inventory_data = pd.read_sql_query("SELECT * FROM inventory", conn)
 st.write(inventory_data)
 
 # Attendance Section
@@ -128,14 +105,6 @@ if st.button("Record Payment"):
 st.subheader("Payment Records")
 payment_data = pd.read_sql_query("SELECT * FROM payments", conn)
 st.write(payment_data)
-
-# Signature Section
-st.title("Signature Section")
-
-signature_image = st.file_uploader("Upload Signature", type=["png", "jpg", "jpeg"])
-
-if signature_image:
-    st.image(signature_image, caption="Uploaded Signature", use_column_width=True)
 
 # Close the connection when the app is stopped
 conn.close()
