@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-import streamlit as st
 
 # Set gradient background using custom CSS
 st.markdown(
@@ -14,6 +13,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 # Connect to SQLite database
 conn = sqlite3.connect('inventory_management.db')
 c = conn.cursor()
@@ -92,8 +92,6 @@ if st.button("Record Transaction"):
             else:
                 st.error("Not enough inventory to remove this quantity.")
                 conn.rollback()
-                conn.commit()
-                conn.close()
                 st.stop()
         
         # Record the transaction
@@ -108,8 +106,8 @@ st.subheader("Inventory Balance")
 try:
     inventory_data = pd.read_sql_query('''
         SELECT i.item_id, i.item_name, 
-               SUM(CASE WHEN t.transaction_type = 'in' THEN t.quantity ELSE 0 END) -
-               SUM(CASE WHEN t.transaction_type = 'out' THEN t.quantity ELSE 0 END) AS balance
+               IFNULL(SUM(CASE WHEN t.transaction_type = 'in' THEN t.quantity ELSE 0 END), 0) -
+               IFNULL(SUM(CASE WHEN t.transaction_type = 'out' THEN t.quantity ELSE 0 END), 0) AS balance
         FROM inventory i
         LEFT JOIN inventory_transactions t ON i.item_id = t.item_id
         GROUP BY i.item_id, i.item_name
