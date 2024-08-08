@@ -2,3 +2,8 @@ pandas
 streamlit==1.3.0
 pymongo==4.1.1
 
+try:
+    import pymongo
+    print("pymongo is installed")
+except ModuleNotFoundError:
+    print("pymongo is not installed")
