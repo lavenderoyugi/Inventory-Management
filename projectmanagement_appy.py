@@ -1,5 +1,5 @@
 # app.py
-pip install pymongo
+!pip install pymongo
 
 import streamlit as st
 import pandas as pd
