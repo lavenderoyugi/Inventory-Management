@@ -18,6 +18,17 @@ c.execute('''
 ''')
 
 c.execute('''
+    CREATE TABLE IF NOT EXISTS inventory_transactions (
+        transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id TEXT,
+        transaction_type TEXT,  -- 'in' or 'out'
+        quantity INTEGER,
+        transaction_date DATE,
+        FOREIGN KEY(item_id) REFERENCES inventory(item_id)
+    )
+''')
+
+c.execute('''
     CREATE TABLE IF NOT EXISTS attendance (
         worker_id TEXT PRIMARY KEY,
         worker_name TEXT,
@@ -44,21 +55,56 @@ st.title("Inventory Management")
 item_id = st.text_input("Item ID")
 item_name = st.text_input("Item Name")
 quantity = st.number_input("Quantity", min_value=0)
-date_of_arrival = st.date_input("Date of Arrival")
+transaction_type = st.selectbox("Transaction Type", ["in", "out"])  # Select In or Out
+date_of_arrival = st.date_input("Date of Transaction")
 supplier_details = st.text_input("Supplier Details")
 
-if st.button("Add Item"):
+if st.button("Record Transaction"):
     with conn:
+        # Insert or update the inventory item
+        if transaction_type == 'in':
+            c.execute('''
+                INSERT OR IGNORE INTO inventory (item_id, item_name, quantity, date_of_arrival, supplier_details)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (item_id, item_name, quantity, date_of_arrival, supplier_details))
+            c.execute('''
+                UPDATE inventory SET quantity = quantity + ? WHERE item_id = ?
+            ''', (quantity, item_id))
+        elif transaction_type == 'out':
+            # Ensure the item exists and has enough quantity for the out transaction
+            current_quantity = c.execute('SELECT quantity FROM inventory WHERE item_id = ?', (item_id,)).fetchone()
+            if current_quantity and current_quantity[0] >= quantity:
+                c.execute('''
+                    UPDATE inventory SET quantity = quantity - ? WHERE item_id = ?
+                ''', (quantity, item_id))
+            else:
+                st.error("Not enough inventory to remove this quantity.")
+                conn.rollback()
+                conn.commit()
+                conn.close()
+                st.stop()
+        
+        # Record the transaction
         c.execute('''
-            INSERT OR REPLACE INTO inventory (item_id, item_name, quantity, date_of_arrival, supplier_details)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (item_id, item_name, quantity, date_of_arrival, supplier_details))
-    st.success("Item added to inventory")
+            INSERT INTO inventory_transactions (item_id, transaction_type, quantity, transaction_date)
+            VALUES (?, ?, ?, ?)
+        ''', (item_id, transaction_type, quantity, date_of_arrival))
+    st.success("Transaction recorded successfully")
 
-# Display Inventory
-st.subheader("Inventory List")
-inventory_data = pd.read_sql_query("SELECT * FROM inventory", conn)
-st.write(inventory_data)
+# Display Inventory Balance
+st.subheader("Inventory Balance")
+try:
+    inventory_data = pd.read_sql_query('''
+        SELECT i.item_id, i.item_name, 
+               SUM(CASE WHEN t.transaction_type = 'in' THEN t.quantity ELSE 0 END) -
+               SUM(CASE WHEN t.transaction_type = 'out' THEN t.quantity ELSE 0 END) AS balance
+        FROM inventory i
+        LEFT JOIN inventory_transactions t ON i.item_id = t.item_id
+        GROUP BY i.item_id, i.item_name
+    ''', conn)
+    st.write(inventory_data)
+except Exception as e:
+    st.error(f"An error occurred while fetching inventory data: {e}")
 
 # Attendance Section
 st.title("Attendance Register")
@@ -105,6 +151,14 @@ if st.button("Record Payment"):
 st.subheader("Payment Records")
 payment_data = pd.read_sql_query("SELECT * FROM payments", conn)
 st.write(payment_data)
+
+# Signature Section
+st.title("Signature Section")
+
+signature_image = st.file_uploader("Upload Signature", type=["png", "jpg", "jpeg"])
+
+if signature_image:
+    st.image(signature_image, caption="Uploaded Signature", use_column_width=True)
 
 # Close the connection when the app is stopped
 conn.close()
