@@ -1,7 +1,19 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+mport streamlit as st
 
+# Set gradient background using custom CSS
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: linear-gradient(135deg, #71b7e6, #9b59b6);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 # Connect to SQLite database
 conn = sqlite3.connect('inventory_management.db')
 c = conn.cursor()
