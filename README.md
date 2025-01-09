@@ -25,6 +25,7 @@ This project is an **Inventory and Project Management Application** designed to 
 
 ## 🔧 Technologies Used
 - **Programming Language:** Python, SQL
+- - **App:** streamlit
 - **File Handling:** CSV for saving and retrieving data
 
 ---
