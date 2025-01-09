@@ -20,7 +20,10 @@ This project is an **Inventory and Project Management Application** designed to 
 
 - **User-Friendly Interface:**
   - An intuitive application built in Python with Tkinter for ease of use.
+## APP
+![image](https://github.com/user-attachments/assets/ed29c2f9-8c7b-4f44-962f-37d0c0b2ba8a)
 
+(https://inventory-management-nnp6lsvbbg7z9wofdbt79v.streamlit.app/)
 ---
 
 ## 🔧 Technologies Used
